@@ -15,16 +15,15 @@ BOT_TOKEN = "8703596825:AAHluO1NGlM9rbj9uc8bfylk7a9NTPUm3aU"
 API_URL = 'https://client.ind.freefiremobile.com/GetLoginData'
 ALLOWED_FILE = "allowed_users.json"
 
-# ✅ SIRF EK OWNER - Last mein 159 wala
-OWNER_IDS = ["7293041159"]  # Sirf yeh ek owner
+# 🔥 SIRF EK OWNER - TERI ID
+OWNER_IDS = ["7293041159"]  # Sirf tu owner hai!
 
-# ===== FILE FUNCTIONS =====
 def load_allowed_users():
     try:
         with open(ALLOWED_FILE, "r") as f:
             return json.load(f)
     except:
-        return []
+        return ["7293041159"]  # Default: teri ID pehle se add
 
 def save_allowed_users(users):
     with open(ALLOWED_FILE, "w") as f:
@@ -94,30 +93,42 @@ def trigger_injection(jwt_token, version):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
+    # 🔥 CHECK: Agar user allowed nahi hai toh access deny
     if not is_allowed(user_id):
-        add_user(user_id)
         await update.message.reply_text(
-            f"✅ *ACCESS GRANTED!*\n🆔 Chat ID: `{user_id}`\n\n🔥 Now use this bot to ban accounts!",
+            "⛔ *ACCESS DENIED!*\n\n"
+            "You are not authorized to use this bot.\n"
+            "Contact the owner to get access.",
             parse_mode='Markdown'
         )
+        return
     
     keyboard = [
         [InlineKeyboardButton("🔐 BAN", callback_data='ban')],
         [InlineKeyboardButton("📖 HELP", callback_data='help')],
         [InlineKeyboardButton("🆔 MY ID", callback_data='myid')]
     ]
+    
+    # Agar owner hai toh extra buttons dikhao
+    if user_id in OWNER_IDS:
+        keyboard.append([InlineKeyboardButton("👑 OWNER PANEL", callback_data='owner')])
+    
     await update.message.reply_text(
-        "🔥 *NEUTRON BAN BOT* 🔥\nSend JWT token to ban account.",
+        f"🔥 *NEUTRON BAN BOT* 🔥\n\n"
+        f"🆔 Your Chat ID: `{user_id}`\n"
+        f"👑 Role: {'OWNER' if user_id in OWNER_IDS else 'USER'}\n\n"
+        "Send JWT token to ban account.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
     )
 
-# ✅ /adduser - Chat ID se user add karo (Sirf owner)
+# ✅ /adduser - SIRF OWNER ADD KAR SAKTA HAI!
 async def add_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
+    # 🔥 SIRF OWNER CHECK
     if user_id not in OWNER_IDS:
-        await update.message.reply_text("⛔ Only owner can add users!")
+        await update.message.reply_text("⛔ *Only owner can add users!*", parse_mode='Markdown')
         return
     
     if not context.args:
@@ -140,25 +151,28 @@ async def add_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_info = await context.bot.get_chat(int(new_user))
             name = user_info.first_name or "Unknown"
             await update.message.reply_text(
-                f"✅ User *{name}* (`{new_user}`) added successfully!\n\n"
-                f"Ab wo bot use kar sakta hai!",
+                f"✅ *ACCESS GRANTED!*\n\n"
+                f"👤 User: *{name}*\n"
+                f"🆔 Chat ID: `{new_user}`\n\n"
+                f"Ab wo bot use kar sakta hai! 🎉",
                 parse_mode='Markdown'
             )
         except:
             await update.message.reply_text(
-                f"✅ User `{new_user}` added successfully!\n\n"
-                f"Ab wo bot use kar sakta hai!",
+                f"✅ *ACCESS GRANTED!*\n\n"
+                f"🆔 Chat ID: `{new_user}`\n\n"
+                f"Ab wo bot use kar sakta hai! 🎉",
                 parse_mode='Markdown'
             )
     else:
-        await update.message.reply_text(f"ℹ️ User `{new_user}` already exists!", parse_mode='Markdown')
+        await update.message.reply_text(f"ℹ️ User `{new_user}` already has access!", parse_mode='Markdown')
 
-# ✅ /addforward - Forwarded message se user add (Sirf owner)
+# ✅ /addforward - SIRF OWNER (Forwarded message se add)
 async def add_from_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
     if user_id not in OWNER_IDS:
-        await update.message.reply_text("⛔ Only owner!")
+        await update.message.reply_text("⛔ *Only owner!*", parse_mode='Markdown')
         return
     
     if update.message.forward_from:
@@ -167,12 +181,14 @@ async def add_from_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if add_user(forward_id):
             await update.message.reply_text(
-                f"✅ User *{forward_name}* (`{forward_id}`) added successfully!\n\n"
+                f"✅ *ACCESS GRANTED!*\n\n"
+                f"👤 User: *{forward_name}*\n"
+                f"🆔 Chat ID: `{forward_id}`\n\n"
                 f"Ab wo bot use kar sakta hai! 🎉",
                 parse_mode='Markdown'
             )
         else:
-            await update.message.reply_text(f"ℹ️ User `{forward_id}` already exists!", parse_mode='Markdown')
+            await update.message.reply_text(f"ℹ️ User `{forward_id}` already has access!", parse_mode='Markdown')
     else:
         await update.message.reply_text(
             "❌ *Forward a user's message first!*\n\n"
@@ -184,12 +200,12 @@ async def add_from_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
 
-# ✅ /removeuser - User hatao (Sirf owner)
+# ✅ /removeuser - SIRF OWNER
 async def remove_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
     if user_id not in OWNER_IDS:
-        await update.message.reply_text("⛔ Only owner can remove users!")
+        await update.message.reply_text("⛔ *Only owner!*", parse_mode='Markdown')
         return
     
     if not context.args:
@@ -197,17 +213,22 @@ async def remove_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     
     remove_id = context.args[0]
+    
+    if remove_id in OWNER_IDS:
+        await update.message.reply_text("❌ Cannot remove owner!", parse_mode='Markdown')
+        return
+    
     if remove_user(remove_id):
         await update.message.reply_text(f"✅ User `{remove_id}` removed!", parse_mode='Markdown')
     else:
         await update.message.reply_text(f"❌ User `{remove_id}` not found!", parse_mode='Markdown')
 
-# ✅ /users - Saare allowed users dekh (Sirf owner)
+# ✅ /users - SIRF OWNER
 async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
     if user_id not in OWNER_IDS:
-        await update.message.reply_text("⛔ Only owner can view user list!")
+        await update.message.reply_text("⛔ *Only owner can view user list!*", parse_mode='Markdown')
         return
     
     users = load_allowed_users()
@@ -220,36 +241,34 @@ async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             user_info = await context.bot.get_chat(int(uid))
             name = user_info.first_name or "Unknown"
-            msg += f"{i}. *{name}* - `{uid}`\n"
+            is_owner = "👑" if uid in OWNER_IDS else ""
+            msg += f"{i}. {is_owner} *{name}* - `{uid}`\n"
         except:
             msg += f"{i}. `{uid}`\n"
     
     msg += f"\nTotal: {len(users)} users"
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-# ✅ /clearusers - Sab users hatao (Sirf owner)
-async def clear_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_chat.id)
-    
-    if user_id not in OWNER_IDS:
-        await update.message.reply_text("⛔ Only owner!")
-        return
-    
-    save_allowed_users([])
-    await update.message.reply_text("🗑️ All users cleared!")
-
-# ✅ /myid - Apni Chat ID
+# ✅ /myid - Sabhi dekh sakte hain
 async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
+    is_allowed_status = "✅ GRANTED" if is_allowed(user_id) else "❌ DENIED"
+    is_owner_status = "👑 OWNER" if user_id in OWNER_IDS else "👤 USER"
+    
     await update.message.reply_text(
         f"🆔 *Your Chat ID:* `{user_id}`\n"
-        f"✅ Access: {'GRANTED' if is_allowed(user_id) else 'PENDING'}",
+        f"📊 *Status:* {is_allowed_status}\n"
+        f"👑 *Role:* {is_owner_status}",
         parse_mode='Markdown'
     )
 
 # ✅ /help - Help menu
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
+    
+    if not is_allowed(user_id):
+        await update.message.reply_text("⛔ ACCESS DENIED!")
+        return
     
     msg = "📖 *NEUTRON BAN BOT - HELP*\n\n"
     
@@ -258,10 +277,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg += "/adduser <id> - Add user by Chat ID\n"
         msg += "/addforward - Add user from forwarded message\n"
         msg += "/removeuser <id> - Remove user\n"
-        msg += "/users - List all users\n"
-        msg += "/clearusers - Remove all users\n\n"
+        msg += "/users - List all users\n\n"
     
-    msg += "👤 *Public Commands:*\n"
+    msg += "👤 *User Commands:*\n"
     msg += "/start - Menu\n"
     msg += "/myid - Your Chat ID\n"
     msg += "/help - This help\n\n"
@@ -274,9 +292,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
+    # 🔥 CHECK: Agar allowed nahi hai toh deny
     if not is_allowed(user_id):
-        add_user(user_id)
-        await update.message.reply_text(f"✅ Access granted! Chat ID: `{user_id}`", parse_mode='Markdown')
+        await update.message.reply_text("⛔ ACCESS DENIED! You are not authorized.")
+        return
     
     await process_ban(update, context, update.message.text.strip())
 
@@ -289,7 +308,6 @@ async def process_ban(update, context, token):
             return
         raw_nick = user_data.get('nickname', '')
         nickname = decode_ff_name(raw_nick)
-        region = user_data.get('lock_region', user_data.get('region', 'IND'))
         account_id = user_data.get('account_id', 'Unknown')
         version = user_data.get('release_version', 'Latest')
         await msg.edit_text(f"🎯 {nickname} | {account_id}\n⏳ Injecting...", parse_mode='Markdown')
@@ -305,8 +323,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     
     if not is_allowed(user_id):
-        add_user(user_id)
-        await update.callback_query.answer("✅ Access granted!", show_alert=True)
+        await update.callback_query.answer("⛔ Access Denied!", show_alert=True)
+        return
     
     query = update.callback_query
     await query.answer()
@@ -317,8 +335,23 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await help_command(update, context)
     elif query.data == 'myid':
         await myid(update, context)
+    elif query.data == 'owner':
+        if user_id in OWNER_IDS:
+            keyboard = [
+                [InlineKeyboardButton("➕ ADD USER", callback_data='adduser_btn')],
+                [InlineKeyboardButton("📋 LIST USERS", callback_data='listusers_btn')],
+                [InlineKeyboardButton("➖ REMOVE USER", callback_data='removeuser_btn')],
+                [InlineKeyboardButton("🔙 BACK", callback_data='back')]
+            ]
+            await query.message.reply_text(
+                "👑 *OWNER PANEL*\n\n"
+                "Select an option:",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='Markdown'
+            )
+        else:
+            await query.message.reply_text("⛔ Only owner!")
 
-# ===== MAIN =====
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
@@ -327,14 +360,13 @@ def main():
     app.add_handler(CommandHandler("addforward", add_from_forward))
     app.add_handler(CommandHandler("removeuser", remove_user_command))
     app.add_handler(CommandHandler("users", list_users))
-    app.add_handler(CommandHandler("clearusers", clear_users))
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_token))
     app.add_handler(CallbackQueryHandler(callback_handler))
     
     print("🔥 NEUTRON BAN BOT STARTED!")
-    print(f"👑 Owner ID: {OWNER_IDS[0]}")  # Sirf ek owner
+    print(f"👑 Owner ID: {OWNER_IDS[0]}")
     print(f"📁 Allowed users file: {ALLOWED_FILE}")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
