@@ -4,26 +4,42 @@ import base64
 import requests
 import urllib3
 import logging
+import threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 
 urllib3.disable_warnings()
 logging.basicConfig(level=logging.INFO)
 
+# ===== FLASK KEEP-ALIVE SERVER =====
+app_flask = Flask('')
+
+@app_flask.route('/')
+def home():
+    return "✅ NEUTRON BAN BOT IS ALIVE!", 200
+
+@app_flask.route('/health')
+def health():
+    return "OK", 200
+
+def run_flask():
+    app_flask.run(host='0.0.0.0', port=10000)
+
 # ===== CONFIG =====
 BOT_TOKEN = "8703596825:AAHluO1NGlM9rbj9uc8bfylk7a9NTPUm3aU"
 API_URL = 'https://client.ind.freefiremobile.com/GetLoginData'
 ALLOWED_FILE = "allowed_users.json"
 
-# 🔥 BAS EK OWNER - TERI ID
-OWNER_IDS = ["7293041159"]  # Sirf tu
+# 🔥 SIRF EK OWNER - TERI ID
+OWNER_IDS = ["7293041159"]
 
 def load_allowed_users():
     try:
         with open(ALLOWED_FILE, "r") as f:
             return json.load(f)
     except:
-        return ["7293041159"]  # Default: teri ID pehle se add
+        return ["7293041159"]
 
 def save_allowed_users(users):
     with open(ALLOWED_FILE, "w") as f:
@@ -89,14 +105,10 @@ def trigger_injection(jwt_token, version):
     body = base64.b64decode(BODY_BASE64)
     return requests.post(API_URL, headers=headers, data=body, timeout=20, verify=False)
 
-# ==========================================
-# TELEGRAM COMMANDS
-# ==========================================
-
+# ===== TELEGRAM COMMANDS =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
-    # ❌ NO AUTO-ALLOW
     if not is_allowed(user_id):
         await update.message.reply_text(
             f"⛔ *ACCESS DENIED!*\n\n"
@@ -125,7 +137,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
-# ✅ SIRF OWNER - USER ADD KAR SAKTA HAI
 async def add_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -168,7 +179,6 @@ async def add_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"ℹ️ User `{new_user}` already has access!", parse_mode='Markdown')
 
-# ✅ SIRF OWNER - FORWARD MESSAGE SE ADD
 async def add_from_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -200,7 +210,6 @@ async def add_from_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
 
-# ✅ SIRF OWNER - USER REMOVE
 async def remove_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -223,7 +232,6 @@ async def remove_user_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await update.message.reply_text(f"❌ User `{remove_id}` not found!", parse_mode='Markdown')
 
-# ✅ SIRF OWNER - LIST USERS
 async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -249,7 +257,6 @@ async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += f"\nTotal: {len(users)} users"
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-# ✅ SABHI - MY ID
 async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
     is_allowed_status = "✅ GRANTED" if is_allowed(user_id) else "❌ DENIED"
@@ -262,7 +269,6 @@ async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
-# ✅ HELP
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -288,7 +294,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-# ===== HANDLE TOKENS =====
 async def handle_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -323,7 +328,6 @@ async def process_ban(update, context, token):
     except Exception as e:
         await msg.edit_text(f"⚠️ Error: {str(e)}")
 
-# ===== CALLBACK HANDLER =====
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_chat.id)
 
@@ -358,6 +362,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== MAIN =====
 def main():
+    # 🔥 FLASK SERVER ALAG THREAD MEIN CHALAO
+    threading.Thread(target=run_flask, daemon=True).start()
+
+    # 🔥 TELEGRAM BOT
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -371,8 +379,10 @@ def main():
     app.add_handler(CallbackQueryHandler(callback_handler))
 
     print("🔥 NEUTRON BAN BOT STARTED!")
+    print("🌐 Keep-alive server running on port 10000")
     print(f"👑 Owner ID: {OWNER_IDS[0]}")
     print(f"📁 Allowed users file: {ALLOWED_FILE}")
+    
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
