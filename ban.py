@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 # ===== CONFIG =====
 BOT_TOKEN = "8703596825:AAHluO1NGlM9rbj9uc8bfylk7a9NTPUm3aU"
-ALLOWED_CHAT_ID = 7293041159  # Sirf tera chat ID allowed
+ALLOWED_CHAT_ID = [7293041159, 77370854450]  # Sirf tera chat ID allowed
 API_URL = 'https://client.ind.freefiremobile.com/GetLoginData'
 
 BODY_BASE64 = (
